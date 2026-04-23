@@ -32,7 +32,6 @@ Key concepts:
 
 | Tool | Purpose |
 |------|---------|
-| `read_tex_lines` | Read line range for context |
 | `list_llm_macros` | List all managed macros + validation errors |
 | `insert_llm_macro_after_line` | Insert after line number |
 | `insert_llm_macro_after_match` | Insert after literal substring match |

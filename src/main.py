@@ -49,20 +49,18 @@ mcp = FastMCP(
         "  • Insert a new explanatory or review comment into a .tex file.\n"
         "  • Update or remove a comment you previously inserted.\n"
         "  • List or validate all managed comments in a file.\n"
-        "  • Read a range of lines for context before deciding where to insert.\n"
         "\n"
         "Workflow:\n"
-        "  1. Call read_tex_lines to inspect the relevant region.\n"
-        "  2. Call insert_llm_macro_after_line or insert_llm_macro_after_match "
+        "  1. Call insert_llm_macro_after_line or insert_llm_macro_after_match "
         "to add a comment.\n"
         "     For insert_llm_macro_after_match, match_text is an exact literal "
         "substring match against one source line; it is not regex-based and does "
         "not unescape backslashes. In JSON, pass a LaTeX command like "
         '\\section{Intro} as "\\\\section{Intro}" so the server receives a '
         "single leading backslash.\n"
-        "  3. Record the returned stable ID if you may need to edit or remove the "
+        "  2. Record the returned stable ID if you may need to edit or remove the "
         "comment later.\n"
-        "  4. Call replace_llm_macro or remove_llm_macro by ID to update or delete.\n"
+        "  3. Call replace_llm_macro or remove_llm_macro by ID to update or delete.\n"
         "\n"
         "Only .tex files inside the server startup directory may be modified."
     ),
@@ -359,41 +357,6 @@ def scan_macros(text: str) -> tuple[list[ManagedMacro], list[MacroError]]:
 def relative_path_str(path: Path) -> str:
     """Return *path* as a string relative to ``WORKSPACE_ROOT``."""
     return str(path.relative_to(WORKSPACE_ROOT))
-
-
-@mcp.tool(title="Read LaTeX line range")
-def read_tex_lines(
-    file_path: str, start_line: Annotated[int, Field(ge=1)], end_line: Annotated[int, Field(ge=1)]
-) -> dict[str, object]:
-    """Read a contiguous range of lines from a ``.tex`` file.
-
-    Returns ``{"path": ..., "lines": [{"line": N, "text": "..."}]}`` for lines
-    *start_line* through *end_line* inclusive (both 1-based).  Use this tool to
-    inspect surrounding context before inserting or editing macros.
-    """
-    try:
-        if start_line < 1 or end_line < 1:
-            fail("invalid_argument", "start_line and end_line must be >= 1")
-        if start_line > end_line:
-            fail("invalid_argument", "start_line must be <= end_line")
-
-        p = resolve_allowed_path(file_path)
-        text = read_text(p)
-
-        if text == "":
-            return {"path": relative_path_str(p), "lines": []}
-
-        lines = get_line_texts(text)
-        if start_line > len(lines):
-            fail("line_out_of_range", "start_line out of range")
-
-        selected = [
-            {"line": i + 1, "text": t}
-            for i, t in enumerate(lines[start_line - 1 : end_line], start=start_line - 1)
-        ]
-        return {"path": relative_path_str(p), "lines": selected}
-    except MCPError as e:
-        return {"code": e.code, "message": e.message}
 
 
 @mcp.tool(title="List managed LLM comments")

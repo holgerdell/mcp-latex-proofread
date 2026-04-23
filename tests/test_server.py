@@ -13,7 +13,6 @@ from main import (
     insert_llm_macro_after_line,
     insert_llm_macro_after_match,
     list_llm_macros,
-    read_tex_lines,
     remove_llm_macro,
     replace_llm_macro,
     validate_llm_macro_file,
@@ -146,69 +145,6 @@ def expect_removed(result: dict[str, object]) -> RemovedEntry:
     removed = result["removed"]
     assert isinstance(removed, dict)
     return cast(RemovedEntry, removed)
-
-
-# ---------------------------------------------------------------------------
-# read_tex_lines
-# ---------------------------------------------------------------------------
-
-
-class TestReadTexLines:
-    def test_basic_range(self, ws: Path) -> None:
-        p = write_tex(ws, SIMPLE)
-        result = read_tex_lines(p, 2, 4)
-        assert "code" not in result
-        lines = expect_lines(result)
-        assert len(lines) == 3
-        assert lines[0]["line"] == 2
-        assert lines[0]["text"] == "\\begin{document}"
-
-    def test_single_line(self, ws: Path) -> None:
-        p = write_tex(ws, SIMPLE)
-        result = read_tex_lines(p, 3, 3)
-        lines = expect_lines(result)
-        assert len(lines) == 1
-        assert lines[0]["text"] == "\\section{Introduction}"
-
-    def test_end_line_clamped_to_eof(self, ws: Path) -> None:
-        p = write_tex(ws, SIMPLE)
-        total = len(SIMPLE.splitlines())
-        result = read_tex_lines(p, 1, total + 100)
-        lines = expect_lines(result)
-        assert len(lines) == total
-
-    def test_start_equals_end_at_last_line(self, ws: Path) -> None:
-        p = write_tex(ws, SIMPLE)
-        total = len(SIMPLE.splitlines())
-        result = read_tex_lines(p, total, total)
-        lines = expect_lines(result)
-        assert len(lines) == 1
-
-    def test_empty_file_returns_empty_list(self, ws: Path) -> None:
-        p = write_tex(ws, "")
-        result = read_tex_lines(p, 1, 1)
-        assert result["lines"] == []
-
-    def test_start_greater_than_end_is_error(self, ws: Path) -> None:
-        p = write_tex(ws, SIMPLE)
-        result = read_tex_lines(p, 3, 2)
-        assert result["code"] == "invalid_argument"
-
-    def test_start_zero_is_error(self, ws: Path) -> None:
-        p = write_tex(ws, SIMPLE)
-        result = read_tex_lines(p, 0, 1)
-        assert result["code"] == "invalid_argument"
-
-    def test_start_out_of_range_is_error(self, ws: Path) -> None:
-        p = write_tex(ws, SIMPLE)
-        total = len(SIMPLE.splitlines())
-        result = read_tex_lines(p, total + 1, total + 2)
-        assert result["code"] == "line_out_of_range"
-
-    def test_returns_relative_path(self, ws: Path) -> None:
-        p = write_tex(ws, SIMPLE)
-        result = read_tex_lines(p, 1, 1)
-        assert result["path"] == "doc.tex"
 
 
 # ---------------------------------------------------------------------------
@@ -576,30 +512,6 @@ class TestValidateLlmMacroFile:
 
 
 class TestPathSecurity:
-    def test_path_escape_is_rejected(self, ws: Path) -> None:
-        (ws.parent / "secret.tex").write_text("secret", encoding="utf-8")
-        result = read_tex_lines("../secret.tex", 1, 1)
-        assert result["code"] == "path_not_allowed"
-
-    def test_non_tex_extension_is_rejected(self, ws: Path) -> None:
-        (ws / "doc.md").write_text("hello", encoding="utf-8")
-        result = read_tex_lines("doc.md", 1, 1)
-        assert result["code"] == "invalid_file_type"
-
-    def test_nonexistent_file_is_rejected(self, ws: Path) -> None:
-        result = read_tex_lines("ghost.tex", 1, 1)
-        assert result["code"] == "file_not_found"
-
-    def test_empty_path_is_rejected(self, ws: Path) -> None:
-        result = read_tex_lines("", 1, 1)
-        assert result["code"] == "invalid_argument"
-
-    def test_absolute_path_inside_workspace_is_accepted(self, ws: Path) -> None:
-        p = ws / "abs.tex"
-        p.write_text(SIMPLE, encoding="utf-8")
-        result = read_tex_lines(str(p), 1, 1)
-        assert "code" not in result
-
     def test_path_security_applies_to_all_write_tools(self, ws: Path) -> None:
         escape = "../secret.tex"
         (ws.parent / "secret.tex").write_text("s", encoding="utf-8")
