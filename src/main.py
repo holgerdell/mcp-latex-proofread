@@ -445,17 +445,15 @@ def insert_llm_macro_after_match(
     file_path: str,
     match_text: str,
     body: str,
-    occurrence: Annotated[int, Field(ge=1)] = 1,
 ) -> dict[str, object]:
     """Insert a new managed ``\\llm{...}`` macro after a line matching *match_text*.
 
-    When the text occurs on multiple lines, *occurrence* (1-based, default 1)
-    selects which match to use. Matching is a literal substring check against
-    each source line; it is not regex-based and does not unescape backslashes.
-    JSON callers must escape backslashes normally, so to match a line containing
-    ``\\section{Introduction}`` the JSON string should be
-    ``"\\section{Introduction}"``. The server generates a fresh stable ID.
-    Returns ``{"ok": true, "path": ..., "matched": {...}, "inserted": {...}}``.
+    Matching is a literal substring check against each source line; it is not
+    regex-based and does not unescape backslashes. JSON callers must escape
+    backslashes normally, so to match a line containing ``\\section{Introduction}``
+    the JSON string should be ``"\\section{Introduction}"``. If multiple lines
+    match, the call fails and reports all matching line numbers. Returns
+    ``{"ok": true, "path": ..., "line": ...}`` on success.
     """
     try:
         p = resolve_allowed_path(file_path)
@@ -465,21 +463,20 @@ def insert_llm_macro_after_match(
 
         if not match_text:
             fail("invalid_argument", "match_text is required")
-        if occurrence < 1:
-            fail("invalid_argument", "occurrence must be >= 1")
 
         lines = get_line_texts(original)
         matches = [i + 1 for i, t in enumerate(lines) if match_text in t]
 
         if not matches:
             fail("match_not_found", "no line contains match_text")
-        if occurrence > len(matches):
-            fail(
-                "match_not_found",
-                f"occurrence {occurrence} not found; only {len(matches)} match(es)",
-            )
+        if len(matches) > 1:
+            return {
+                "code": "multiple_matches",
+                "count": len(matches),
+                "lines": matches[:10],
+            }
 
-        matched_line = matches[occurrence - 1]
+        matched_line = matches[0]
 
         if is_in_math_mode(lines, matched_line):
             fail("math_mode", "cannot insert \\llm macro inside a math environment")
@@ -499,16 +496,7 @@ def insert_llm_macro_after_match(
         return {
             "ok": True,
             "path": relative_path_str(p),
-            "matched": {
-                "line": matched_line,
-                "match_text": match_text,
-                "occurrence": occurrence,
-            },
-            "inserted": {
-                "id": macro_id,
-                "line": matched_line + 1,
-                "raw": new_line.rstrip("\r\n"),
-            },
+            "line": matched_line + 1,
         }
     except MCPError as e:
         return {"code": e.code, "message": e.message}

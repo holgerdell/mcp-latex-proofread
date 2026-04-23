@@ -298,39 +298,26 @@ class TestInsertLlmMacroAfterMatch:
         p = write_tex(ws, SIMPLE)
         result = insert_llm_macro_after_match(p, "\\section{Introduction}", "sec comment")
         assert result.get("ok") is True
-        matched = expect_matched(result)
-        assert matched["line"] == 3
-        assert matched["occurrence"] == 1
-        inserted = expect_inserted(result)
-        assert inserted["line"] == 4
+        assert result["line"] == 4
         disk = read_tex(ws)
         assert "\\llm{sec comment}" in disk.splitlines()[3]
 
-    def test_match_second_occurrence(self, ws: Path) -> None:
+    def test_multiple_matches_rejected(self, ws: Path) -> None:
         content = "alpha\nbeta\nalpha\ngamma\n"
         p = write_tex(ws, content)
-        result = insert_llm_macro_after_match(p, "alpha", "second", occurrence=2)
-        assert result.get("ok") is True
-        assert expect_matched(result)["line"] == 3
+        result = insert_llm_macro_after_match(p, "alpha", "comment")
+        assert result["code"] == "multiple_matches"
+        assert result["count"] == 2
+        assert result["lines"] == [1, 3]
 
     def test_match_not_found_is_error(self, ws: Path) -> None:
         p = write_tex(ws, SIMPLE)
         result = insert_llm_macro_after_match(p, "nonexistent text", "x")
         assert result["code"] == "match_not_found"
 
-    def test_occurrence_out_of_range_is_error(self, ws: Path) -> None:
-        p = write_tex(ws, SIMPLE)
-        result = insert_llm_macro_after_match(p, "Hello", "x", occurrence=5)
-        assert result["code"] == "match_not_found"
-
     def test_empty_match_text_is_error(self, ws: Path) -> None:
         p = write_tex(ws, SIMPLE)
         result = insert_llm_macro_after_match(p, "", "x")
-        assert result["code"] == "invalid_argument"
-
-    def test_occurrence_zero_is_error(self, ws: Path) -> None:
-        p = write_tex(ws, SIMPLE)
-        result = insert_llm_macro_after_match(p, "Hello", "x", occurrence=0)
         assert result["code"] == "invalid_argument"
 
     def test_file_unchanged_on_no_match(self, ws: Path) -> None:
