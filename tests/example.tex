@@ -1,0 +1,62 @@
+\documentclass{article}
+\usepackage{amsmath, amsthm}
+
+
+\usepackage[usenames,dvipsnames]{xcolor}
+\usepackage{xparse}
+\NewDocumentCommand{\todo}{ O{Fuchsia} O{to-do} +m
+}{\upshape{\color{#1}{\Large[}{\sffamily\bfseries #2:} #3{\Large]}}}
+
+\newcommand{\authorA}[1]{\todo[RoyalPurple][A]{#1}}
+\newcommand{\authorB}[1]{\todo[OliveGreen][B]{#1}}
+\newcommand{\authorC}[1]{\todo[RoyalBlue][C]{#1}}
+\newcommand{\authorD}[1]{\todo[OrangeRed][D]{#1}}
+\newcommand{\authorE}[1]{\todo[DarkOrchid][E]{#1}}
+
+\NewDocumentCommand{\llm}{ o m }{%
+  \todo[RoyalPurple][\IfValueTF{#1}{#1}{LLM}]{#2}%
+}
+
+\title{Example Document}
+\author{Author}
+\date{}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+\llm{The introduction motivates the main result.} % llm:id=a1b2c3d4
+
+This paper proves the following theorem.
+
+\begin{theorem}
+	\llm{State the main result here.} % llm:id=e5f6a7b8
+	For all $n \geq 1$ the inequality $n! \geq 1$ holds.
+\end{theorem}
+
+\section{Preliminaries}
+
+We recall the following standard fact.
+
+\begin{lemma}
+	\llm{Cite the source for this lemma.} % llm:id=c9d0e1f2
+	If $f$ is continuous on $[a, b]$ then $f$ is bounded.
+\end{lemma}
+
+\section{Main Proof}
+
+The proof proceeds by induction.
+
+\begin{proof}
+	\llm{Expand the inductive step.} % llm:id=12345678
+	The base case $n = 1$ is immediate.
+\end{proof}
+
+\section{Conclusion}
+
+The result generalises to the setting of metric spaces.
+
+\end{document}

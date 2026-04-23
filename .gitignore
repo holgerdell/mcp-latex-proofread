@@ -1,0 +1,7 @@
+__pycache__
+tests/example.aux
+tests/example.fdb_latexmk
+tests/example.fls
+tests/example.log
+tests/example.pdf
+tests/example.synctex.gz
