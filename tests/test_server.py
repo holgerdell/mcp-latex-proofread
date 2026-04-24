@@ -73,9 +73,9 @@ Hello world.
 WITH_MACROS = """\
 \\documentclass{article}
 \\begin{document}
-\\llm{First comment} % llm:id=aaaa0001
+\\llm{First comment}% llm:id=aaaa0001
 \\section{Introduction}
-\\llm{Second comment} % llm:id=bbbb0002
+\\llm{Second comment}% llm:id=bbbb0002
 Hello world.
 \\end{document}
 """
@@ -188,7 +188,7 @@ class TestListLlmMacros:
         assert errors[0]["code"] == "missing_id"
 
     def test_duplicate_id_validation_error(self, ws: Path) -> None:
-        content = "\\llm{A} % llm:id=dup00001\n\\llm{B} % llm:id=dup00001\n"
+        content = "\\llm{A}% llm:id=dup00001\n\\llm{B}% llm:id=dup00001\n"
         p = write_tex(ws, content)
         result = list_llm_macros(p)
         codes = [e["code"] for e in expect_validation_errors(result)]
@@ -205,7 +205,7 @@ class TestListLlmMacros:
 
     def test_malformed_macro_validation_error(self, ws: Path) -> None:
         # Starts with \llm{ but id contains a space (invalid)
-        content = "\\llm{body} % llm:id=bad id\n"
+        content = "\\llm{body}% llm:id=bad id\n"
         p = write_tex(ws, content)
         result = list_llm_macros(p)
         errors = expect_validation_errors(result)
@@ -338,7 +338,7 @@ class TestReplaceLlmMacro:
         result = replace_llm_macro(p, "aaaa0001", "Updated body")
         assert result.get("ok") is True
         disk = read_tex(ws)
-        assert "\\llm{Updated body} % llm:id=aaaa0001" in disk
+        assert "\\llm{Updated body}% llm:id=aaaa0001" in disk
         assert "\\llm{First comment}" not in disk
 
     def test_replace_preserves_id(self, ws: Path) -> None:
@@ -372,7 +372,7 @@ class TestReplaceLlmMacro:
         p = write_tex(ws, WITH_MACROS)
         replace_llm_macro(p, "aaaa0001", "changed")
         disk = read_tex(ws)
-        assert "\\llm{Second comment} % llm:id=bbbb0002" in disk
+        assert "\\llm{Second comment}% llm:id=bbbb0002" in disk
 
 
 # ---------------------------------------------------------------------------
@@ -413,7 +413,7 @@ class TestRemoveLlmMacro:
         p = write_tex(ws, WITH_MACROS)
         remove_llm_macro(p, "aaaa0001")
         disk = read_tex(ws)
-        assert "\\llm{Second comment} % llm:id=bbbb0002" in disk
+        assert "\\llm{Second comment}% llm:id=bbbb0002" in disk
 
     def test_remove_not_found_is_error(self, ws: Path) -> None:
         p = write_tex(ws, WITH_MACROS)
@@ -460,7 +460,7 @@ class TestValidateLlmMacroFile:
         assert errors[0]["code"] == "missing_id"
 
     def test_duplicate_id_is_invalid(self, ws: Path) -> None:
-        content = "\\llm{A} % llm:id=dup00001\n\\llm{B} % llm:id=dup00001\n"
+        content = "\\llm{A}% llm:id=dup00001\n\\llm{B}% llm:id=dup00001\n"
         p = write_tex(ws, content)
         result = validate_llm_macro_file(p)
         assert result["valid"] is False
@@ -475,7 +475,7 @@ class TestValidateLlmMacroFile:
         assert expect_errors(result)[0]["code"] == "not_own_line"
 
     def test_malformed_id_is_invalid(self, ws: Path) -> None:
-        content = "\\llm{body} % llm:id=bad id\n"
+        content = "\\llm{body}% llm:id=bad id\n"
         p = write_tex(ws, content)
         result = validate_llm_macro_file(p)
         assert result["valid"] is False

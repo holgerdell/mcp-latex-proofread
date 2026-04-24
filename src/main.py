@@ -111,7 +111,7 @@ class MCPError(Exception):
 
 @dataclass(frozen=True)
 class ManagedMacro:
-    """An immutable snapshot of one parsed ``\\llm{...} % llm:id=<id>`` line."""
+    """An immutable snapshot of one parsed ``\\llm{...}% llm:id=<id>`` line."""
 
     id: str
     """Stable identifier parsed from the trailing ``% llm:id=<id>`` comment."""
