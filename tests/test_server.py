@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import shutil
 from pathlib import Path
 from typing import TypedDict, cast
 
@@ -491,6 +492,94 @@ class TestValidateLlmMacroFile:
         p = write_tex(ws, SIMPLE)
         result = validate_llm_macro_file(p)
         assert result["path"] == "doc.tex"
+
+
+# ---------------------------------------------------------------------------
+# Commented-out \llm lines are silently ignored
+# ---------------------------------------------------------------------------
+
+
+EXAMPLE_TEX = Path(__file__).parent / "example.tex"
+
+EXAMPLE_UNCOMMENTED_IDS = {"a1b2c3d4", "e5f6a7b8", "c9d0e1f2", "12345678"}
+
+
+class TestCommentedOutMacros:
+    def test_list_ignores_commented_macro(self, ws: Path) -> None:
+        p = write_tex(ws, "% \\llm{old}% llm:id=a1b2c3d4\n")
+        result = list_llm_macros(p)
+        assert result["macros"] == []
+        assert result["validation_errors"] == []
+
+    def test_validate_ignores_commented_macro(self, ws: Path) -> None:
+        p = write_tex(ws, "% \\llm{old}% llm:id=a1b2c3d4\n")
+        result = validate_llm_macro_file(p)
+        assert result["valid"] is True
+        assert result["errors"] == []
+
+    def test_indented_comment_ignored(self, ws: Path) -> None:
+        p = write_tex(ws, "    % \\llm{x}% llm:id=a1b2c3d4\n")
+        result = list_llm_macros(p)
+        assert result["macros"] == []
+        assert result["validation_errors"] == []
+
+    def test_mid_line_comment_ignored(self, ws: Path) -> None:
+        p = write_tex(ws, "some text % \\llm{x}\n")
+        result = list_llm_macros(p)
+        assert result["macros"] == []
+        assert result["validation_errors"] == []
+
+    def test_escaped_percent_not_ignored(self, ws: Path) -> None:
+        # \% is an escaped percent — \llm{ following it is real source
+        p = write_tex(ws, "\\% \\llm{body without id}\n")
+        result = list_llm_macros(p)
+        assert len(result["validation_errors"]) >= 1
+
+    def test_managed_macro_unaffected(self, ws: Path) -> None:
+        p = write_tex(ws, WITH_MACROS)
+        result = list_llm_macros(p)
+        assert len(expect_macros(result)) == 2
+        assert result["validation_errors"] == []
+
+    def test_example_tex_valid(self, ws: Path) -> None:
+        dest = ws / "example.tex"
+        shutil.copy(EXAMPLE_TEX, dest)
+        result = validate_llm_macro_file("example.tex")
+        assert result["valid"] is True
+        assert result["errors"] == []
+
+    def test_example_tex_commented_id_absent(self, ws: Path) -> None:
+        dest = ws / "example.tex"
+        shutil.copy(EXAMPLE_TEX, dest)
+        result = list_llm_macros("example.tex")
+        ids = {m["id"] for m in expect_macros(result)}
+        assert ids == EXAMPLE_UNCOMMENTED_IDS
+        assert "deadbeef" not in ids
+
+    def test_commented_with_extra_whitespace_ignored(self, ws: Path) -> None:
+        # Extra spaces between % and \llm, and around the metadata %
+        p = write_tex(ws, "%    \\llm{Old note.}  %  llm:id=deadbeef\n")
+        result = list_llm_macros(p)
+        assert result["macros"] == []
+        assert result["validation_errors"] == []
+
+    def test_active_macro_space_before_percent(self, ws: Path) -> None:
+        # Space between } and %; OWN_LINE_RE allows \s*%\s*
+        p = write_tex(ws, "\\llm{existing note} % llm:id=deadbeef\n")
+        result = list_llm_macros(p)
+        macros = expect_macros(result)
+        assert len(macros) == 1
+        assert macros[0]["id"] == "deadbeef"
+        assert macros[0]["body"] == "existing note"
+        assert result["validation_errors"] == []
+
+    def test_active_macro_extra_spaces_around_percent(self, ws: Path) -> None:
+        p = write_tex(ws, "\\llm{existing note}  %  llm:id=deadbeef\n")
+        result = list_llm_macros(p)
+        macros = expect_macros(result)
+        assert len(macros) == 1
+        assert macros[0]["id"] == "deadbeef"
+        assert macros[0]["body"] == "existing note"
 
 
 # ---------------------------------------------------------------------------

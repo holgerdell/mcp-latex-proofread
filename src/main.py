@@ -234,6 +234,24 @@ def body_is_single_line(body: str) -> bool:
     return "\n" not in body and "\r" not in body
 
 
+def first_unescaped_percent(line: str) -> int:
+    """Return index of the first unescaped ``%`` in *line*, or ``-1`` if none.
+
+    A ``%`` is escaped iff preceded by an odd number of consecutive backslashes.
+    """
+    for i, ch in enumerate(line):
+        if ch != "%":
+            continue
+        bs = 0
+        j = i - 1
+        while j >= 0 and line[j] == "\\":
+            bs += 1
+            j -= 1
+        if bs % 2 == 0:
+            return i
+    return -1
+
+
 def is_in_math_mode(lines: list[str], after_line: int) -> bool:
     """Return True if the position after after_line (1-based) is inside math mode."""
     env_depth = 0
@@ -300,6 +318,12 @@ def scan_macros(text: str) -> tuple[list[ManagedMacro], list[MacroError]]:
     for line_no, line in enumerate(split_lines_with_endings(text), start=1):
         raw = line.rstrip("\r\n")
         if "\\llm{" not in raw:
+            offset += len(line)
+            continue
+
+        llm_pos = raw.index("\\llm{")
+        pct_pos = first_unescaped_percent(raw)
+        if pct_pos != -1 and pct_pos < llm_pos:
             offset += len(line)
             continue
 
