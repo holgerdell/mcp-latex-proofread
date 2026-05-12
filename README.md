@@ -62,11 +62,14 @@ Then start OpenCode in that same LaTeX project directory and give the same kinds
 
 ## What The Server Can Do
 
-- Read line ranges from a `.tex` file for context
 - List all managed `\llm` comments and their IDs
 - Insert a new managed comment after a line number or text match
 - Replace or remove an existing managed comment by ID
 - Validate that all managed comments in a file are well formed
+
+Lines where `\llm{...}` is preceded by an unescaped `%` are treated as
+LaTeX comments and silently ignored by the server — they are not listed,
+not validated, and do not block write operations.
 
 ## What The Server Can't Do
 
