@@ -288,6 +288,14 @@ class TestInsertLlmMacroAfterLine:
         raw = expect_inserted(result)["raw"]
         assert re.match(r"^\\llm\{my body\}% llm:id=[0-9a-f]{8}$", raw)
 
+    def test_insert_blocked_by_malformed_macro_in_file(self, ws: Path) -> None:
+        content = "\\llm{no id here}\n\\section{Intro}\n"
+        p = write_tex(ws, content)
+        before = read_tex(ws)
+        result = insert_llm_macro_after_line(p, 2, "comment")
+        assert result["code"] == "invalid_macro_file"
+        assert read_tex(ws) == before
+
 
 # ---------------------------------------------------------------------------
 # insert_llm_macro_after_match
@@ -299,7 +307,9 @@ class TestInsertLlmMacroAfterMatch:
         p = write_tex(ws, SIMPLE)
         result = insert_llm_macro_after_match(p, "\\section{Introduction}", "sec comment")
         assert result.get("ok") is True
-        assert result["line"] == 4
+        inserted = expect_inserted(result)
+        assert HEX_ID_RE.match(inserted["id"])
+        assert inserted["line"] == 4
         disk = read_tex(ws)
         assert "\\llm{sec comment}" in disk.splitlines()[3]
 
@@ -325,6 +335,45 @@ class TestInsertLlmMacroAfterMatch:
         p = write_tex(ws, SIMPLE)
         before = read_tex(ws)
         insert_llm_macro_after_match(p, "zzznomatch", "x")
+        assert read_tex(ws) == before
+
+    def test_match_returns_inserted_id_line_raw(self, ws: Path) -> None:
+        p = write_tex(ws, SIMPLE)
+        result = insert_llm_macro_after_match(p, "\\section{Introduction}", "sec comment")
+        assert result.get("ok") is True
+        inserted = expect_inserted(result)
+        assert HEX_ID_RE.match(inserted["id"])
+        assert inserted["line"] == 4
+        assert re.match(r"^\\llm\{sec comment\}% llm:id=[0-9a-f]{8}$", inserted["raw"])
+
+    def test_match_with_backslash_in_match_text(self, ws: Path) -> None:
+        content = "intro text\n\\section{Intro}\nbody\n"
+        p = write_tex(ws, content)
+        result = insert_llm_macro_after_match(p, "\\section{Intro}", "comment")
+        assert result.get("ok") is True
+        lines = read_tex(ws).splitlines()
+        assert "\\llm{comment}" in lines[2]
+
+    def test_match_body_with_newline_is_error(self, ws: Path) -> None:
+        p = write_tex(ws, SIMPLE)
+        before = read_tex(ws)
+        result = insert_llm_macro_after_match(p, "\\section{Introduction}", "a\nb")
+        assert result["code"] == "invalid_argument"
+        assert read_tex(ws) == before
+
+    def test_match_file_unchanged_on_multiple_matches(self, ws: Path) -> None:
+        content = "alpha\nbeta\nalpha\ngamma\n"
+        p = write_tex(ws, content)
+        before = read_tex(ws)
+        insert_llm_macro_after_match(p, "alpha", "comment")
+        assert read_tex(ws) == before
+
+    def test_match_blocked_by_malformed_macro_in_file(self, ws: Path) -> None:
+        content = "\\llm{no id here}\n\\section{Intro}\n"
+        p = write_tex(ws, content)
+        before = read_tex(ws)
+        result = insert_llm_macro_after_match(p, "\\section{Intro}", "comment")
+        assert result["code"] == "invalid_macro_file"
         assert read_tex(ws) == before
 
 

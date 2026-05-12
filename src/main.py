@@ -477,7 +477,8 @@ def insert_llm_macro_after_match(
     backslashes normally, so to match a line containing ``\\section{Introduction}``
     the JSON string should be ``"\\section{Introduction}"``. If multiple lines
     match, the call fails and reports all matching line numbers. Returns
-    ``{"ok": true, "path": ..., "line": ...}`` on success.
+    ``{"ok": true, "path": ..., "inserted": {"id": ..., "line": ..., "raw": ...}}``
+    on success.
     """
     try:
         p = resolve_allowed_path(file_path)
@@ -520,7 +521,11 @@ def insert_llm_macro_after_match(
         return {
             "ok": True,
             "path": relative_path_str(p),
-            "line": matched_line + 1,
+            "inserted": {
+                "id": macro_id,
+                "line": matched_line + 1,
+                "raw": new_line.rstrip("\r\n"),
+            },
         }
     except MCPError as e:
         return {"code": e.code, "message": e.message}
